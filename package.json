@@ -19,7 +19,9 @@
   "homepage": "https://github.com/Harsh1111111111/personal-Library#readme",
   "dependencies": {
     "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.0",
     "typescript": "^5.9.2"
   }
