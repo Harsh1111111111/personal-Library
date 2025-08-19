@@ -1,11 +1,34 @@
-import mongoose ,{model, Schema} from 'mongoose';
+import mongoose ,{model, Schema,ObjectId} from 'mongoose';
 
-mongoose.connect("mongodb+srv://hg60543:Harsh%40124@cluster0.dqd1atc.mongodb.net/")
 
 const UserSchema = new Schema({
     username :{type:String , unique:true},
     password :String,    
 })
 
+
 export  const UserModel = model("User", UserSchema);
 
+const UserContentSchema = new Schema({
+    title : String,
+    link : String,
+    tags : [{type: mongoose.Types.ObjectId, ref : 'Tag' }],
+    userId : [{type: mongoose.Types.ObjectId, ref : 'User', required: true }]
+})
+
+
+
+export const UserContent = model("UserContent", UserContentSchema)
+
+
+const LinkSchema = new Schema({
+    hash : String, 
+    userId:{
+        type: mongoose.Types.ObjectId,
+        ref:'User',
+        required: true,
+        unique: true
+    }
+})
+
+export const LinkModel = model("link", LinkSchema);
