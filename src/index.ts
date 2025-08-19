@@ -2,7 +2,7 @@
 import mongoose  from 'mongoose';
 import express,{Request, Response, NextFunction} from 'express';
 import jwt,{JwtPayload} from 'jsonwebtoken';
-import { UserContent, UserModel } from './db';
+import { UserContent, UserModel, LinkModel } from './db';
 import {auth} from './middleware';
 import { random } from './utils';
 
@@ -148,19 +148,72 @@ app.delete("/api/v1/content",auth, async(req,res) => {
     })
 })
 
-app.post("/api/v1/library/share",(req,res) => {
+app.post("/api/v1/library/share",auth , async (req,res) => {
     const share = req.body;
 
+    const existinglink = await LinkModel.findOne({
+        userId: share.userId
+    })
+    if(existinglink)
+    {
+        return res.json({
+            message: "Link already exists"
+        })
+    }
     if(share)
     {
         const hash = random(10);
+        const link = await LinkModel.create({
+            hash:hash,
+            //@ts-ignore
+            userId: req.userId
+        })
+
+        return res.status(201).json({
+            message: "Link created successfully",
+            link: hash
+        })
+    }
+ 
+    await LinkModel.deleteOne({
+            //@ts-ignore
+            userId: req.userId
+    })
+    return res.status(200).json({
+            message: "Link deleted successfully"
+    })
+
+})
+
+app.get("/api/v1/library/:shareLink",auth, async (req,res) => {
+    //@ts-ignore
+    const hash = req.body.hash;
+
+    const link = await LinkModel.findOne({
+        hash: hash,
+    })
+
+    if(!link)
+    {
+        return res.status(404).json({
+            message: "Link not found"
+        })
+    }   
+
+    
+   const content = await UserContent.find({ userId: link.userId });
+    const user = await UserModel.findOne({ _id: link.userId });
+
+    if (!user) {
+        res.status(404).json({ message: "User not found" }); // Handle missing user case.
+        return;
     }
 
-})
-
-app.get("/api/v1/library/:shareLink",(req,res) => {
-
-})
-
+    res.json({
+        username: user.username,
+        content
+    }); // Send user and content details in response.
+});
+    
 
 app.listen(3000)
