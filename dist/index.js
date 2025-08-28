@@ -10,6 +10,7 @@ const express_1 = __importDefault(require("express"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("./db");
 const middleware_1 = require("./middleware");
+const utils_1 = require("./utils");
 const app = (0, express_1.default)();
 exports.jwt_secret = "mysecret";
 mongoose_1.default.connect("mongodb+srv://hg60543:Harsh%40124@cluster0.dqd1atc.mongodb.net/second_brain");
@@ -28,10 +29,14 @@ app.post("/api/v1/signup", async (req, res) => {
         message: "user created successfully"
     });
 });
+app.get("/api/secret/getuserdetails", async (req, res) => {
+    const users = await db_1.UserModel.find({});
+    return res.json(users);
+});
 app.post("/api/v1/signin", async (req, res) => {
     //zod validation  -> not implemented yet
     const { username, password } = req.body;
-    const response = await db_1.UserModel.findOne({ username, password });
+    const response = await db_1.UserModel.findOne({ username });
     if (!response) {
         return res.status(400).json({
             message: "Invalid credentials"
@@ -111,20 +116,57 @@ app.delete("/api/v1/content", middleware_1.auth, async (req, res) => {
         message: "Content deleted successfully"
     });
 });
-app.post("/api/v1/library/share", (req, res) => {
-    const { shareLink } = req.body;
-    if (!shareLink) {
-        return res.status(400).json({
-            message: "shareLink is required"
+app.post("/api/v1/library/share", middleware_1.auth, async (req, res) => {
+    const share = req.body;
+    const existinglink = await db_1.LinkModel.findOne({
+        userId: share.userId
+    });
+    if (existinglink) {
+        return res.json({
+            message: "Link already exists"
         });
     }
-    // Logic to share the link, e.g., save it to the database or send it via email
+    if (share) {
+        const hash = (0, utils_1.random)(10);
+        const link = await db_1.LinkModel.create({
+            hash: hash,
+            //@ts-ignore
+            userId: req.userId
+        });
+        return res.status(201).json({
+            message: "Link created successfully",
+            link: hash
+        });
+    }
+    await db_1.LinkModel.deleteOne({
+        //@ts-ignore
+        userId: req.userId
+    });
     return res.status(200).json({
-        message: "Share link created successfully",
-        shareLink: shareLink
+        message: "Link deleted successfully"
     });
 });
-app.get("/api/v1/library/:shareLink", (req, res) => {
+app.get("/api/v1/library/:shareLink", middleware_1.auth, async (req, res) => {
+    //@ts-ignore
+    const hash = req.body.hash;
+    const link = await db_1.LinkModel.findOne({
+        hash: hash,
+    });
+    if (!link) {
+        return res.status(404).json({
+            message: "Link not found"
+        });
+    }
+    const content = await db_1.UserContent.find({ userId: link.userId });
+    const user = await db_1.UserModel.findOne({ _id: link.userId });
+    if (!user) {
+        res.status(404).json({ message: "User not found" }); // Handle missing user case.
+        return;
+    }
+    res.json({
+        username: user.username,
+        content
+    }); // Send user and content details in response.
 });
 app.listen(3000);
 //# sourceMappingURL=index.js.map

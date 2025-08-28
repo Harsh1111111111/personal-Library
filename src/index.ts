@@ -3,20 +3,24 @@ import mongoose  from 'mongoose';
 import express,{Request, Response, NextFunction} from 'express';
 import jwt,{JwtPayload} from 'jsonwebtoken';
 import { UserContent, UserModel, LinkModel } from './db';
-import {auth} from './middleware';
+import {auth,adminauth} from './middleware';
 import { random } from './utils';
+import dotenv from 'dotenv'
+
 
 const app = express();
 
-export const jwt_secret = "mysecret"
 
+const dburl = process.env.MONGO_URL; 
 
-mongoose.connect("mongodb+srv://hg60543:Harsh%40124@cluster0.dqd1atc.mongodb.net/second_brain")
-
-export interface usercontent extends JwtPayload
+if(!dburl)
 {
-    userId?: string
+    console.error("Mongo url is not define in the .env file")
+    process.exit(1);
 }
+
+mongoose.connect(dburl);
+
 
 
 
@@ -40,20 +44,37 @@ app.post("/api/v1/signup",async (req,res) => {
    
 })
 
+app.get("/api/secret/getuserdetails" , adminauth,  async(req,res)=>
+    {
+    
+    const users = await UserModel.find({});
+    return res.json(users);
+   
+})
+
+
 app.post("/api/v1/signin",async(req,res) => {
 
     //zod validation  -> not implemented yet
+
     const {username, password} = req.body;
-    const response = await UserModel.findOne({username, password});
-    if(!response)
+    const response = await UserModel.findOne({username,password});
+    const jwt_secret = process.env.jwt_secret;
+    if(!jwt_secret)
     {
-        return res.status(400).json({
-            message: "Invalid credentials"
+        return res.json({
+            message: "Jwt_secret is not present so token cannot be made"
         })
     }
-
-    const token = jwt.sign({
-        userId: response._id,
+    if(!response)
+        {
+            return res.status(400).json({
+                message: "Invalid credentials"
+            })
+        }
+        
+        const token = jwt.sign({
+            userId: response._id,
     },jwt_secret)
 
     return res.status(200).json({

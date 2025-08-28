@@ -1,16 +1,27 @@
 // create the skeleton 
 // cretae the schema 
 import { Request, Response, NextFunction } from 'express';  
-import jwt from 'jsonwebtoken';
+import jwt,{JwtPayload} from 'jsonwebtoken';
 import { UserModel } from './db';
-import { jwt_secret, usercontent } from './index';
+// import {usercontent } from './index';
+import dotenv from 'dotenv';
 
-
-
+interface usercontent extends JwtPayload
+{
+    userId?: string
+}
 
 // this middleware is used to authenthicate the user
 export async function auth(req: Request, res:Response, next: NextFunction)
 {
+    const jwt_secret = process.env.jwt_secreat;
+    if(!jwt_secret)
+    {
+        return res.json({
+            message: "unable to verify or make the token because jwtsecreat is not available"
+        })
+    }
+    
     const token = req.headers.authorization; 
     if(!token)
     {
@@ -35,3 +46,26 @@ export async function auth(req: Request, res:Response, next: NextFunction)
     
 }
 
+
+export async function adminauth (req: Request, res: Response, next : NextFunction)
+{
+    const privatekey = process.env.private_key_getusers;
+    if(!privatekey)
+    {
+        return res.json({
+            message: "private key not given"
+        })
+    }
+
+    const headerprivatekey = req.header('.x-api-Key') ;
+
+    if(privatekey != headerprivatekey)
+    {
+        return res.json({
+            message: "you are not the super maker you cheater"
+        })
+    }
+
+    next();
+
+}
