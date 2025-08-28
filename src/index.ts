@@ -7,11 +7,13 @@ import {auth,adminauth} from './middleware';
 import { random } from './utils';
 import dotenv from 'dotenv'
 
+dotenv.config(); 
 
 const app = express();
 
 
 const dburl = process.env.MONGO_URL; 
+
 
 if(!dburl)
 {

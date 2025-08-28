@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.jwt_secret = void 0;
 // ugly way to ignore typescript errors it just ignore the next line error @ts-ignore
 const mongoose_1 = __importDefault(require("mongoose"));
 const express_1 = __importDefault(require("express"));
@@ -11,9 +10,15 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("./db");
 const middleware_1 = require("./middleware");
 const utils_1 = require("./utils");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const app = (0, express_1.default)();
-exports.jwt_secret = "mysecret";
-mongoose_1.default.connect("mongodb+srv://hg60543:Harsh%40124@cluster0.dqd1atc.mongodb.net/second_brain");
+const dburl = process.env.MONGO_URL;
+if (!dburl) {
+    console.error("Mongo url is not define in the .env file");
+    process.exit(1);
+}
+mongoose_1.default.connect(dburl);
 app.use(express_1.default.json());
 app.post("/api/v1/signup", async (req, res) => {
     //zod validation  -> not implemented yet
@@ -29,14 +34,20 @@ app.post("/api/v1/signup", async (req, res) => {
         message: "user created successfully"
     });
 });
-app.get("/api/secret/getuserdetails", async (req, res) => {
+app.get("/api/secret/getuserdetails", middleware_1.adminauth, async (req, res) => {
     const users = await db_1.UserModel.find({});
     return res.json(users);
 });
 app.post("/api/v1/signin", async (req, res) => {
     //zod validation  -> not implemented yet
     const { username, password } = req.body;
-    const response = await db_1.UserModel.findOne({ username });
+    const response = await db_1.UserModel.findOne({ username, password });
+    const jwt_secret = process.env.jwt_secret;
+    if (!jwt_secret) {
+        return res.json({
+            message: "Jwt_secret is not present so token cannot be made"
+        });
+    }
     if (!response) {
         return res.status(400).json({
             message: "Invalid credentials"
@@ -44,7 +55,7 @@ app.post("/api/v1/signin", async (req, res) => {
     }
     const token = jsonwebtoken_1.default.sign({
         userId: response._id,
-    }, exports.jwt_secret);
+    }, jwt_secret);
     return res.status(200).json({
         message: "User signed in successfully",
         token: token
