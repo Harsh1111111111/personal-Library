@@ -38,11 +38,11 @@ app.get("/api/secret/getuserdetails", middleware_1.adminauth, async (req, res) =
     const users = await db_1.UserModel.find({});
     return res.json(users);
 });
-app.post("/api/v1/signin", async (req, res) => {
+app.post("/api/v1/signin", middleware_1.auth, async (req, res) => {
     //zod validation  -> not implemented yet
     const { username, password } = req.body;
     const response = await db_1.UserModel.findOne({ username, password });
-    const jwt_secret = process.env.jwt_secret;
+    const jwt_secret = process.env.JWT_SECRET;
     if (!jwt_secret) {
         return res.json({
             message: "Jwt_secret is not present so token cannot be made"
@@ -129,18 +129,19 @@ app.delete("/api/v1/content", middleware_1.auth, async (req, res) => {
 });
 app.post("/api/v1/library/share", middleware_1.auth, async (req, res) => {
     const share = req.body;
-    const existinglink = await db_1.LinkModel.findOne({
-        userId: share.userId
-    });
+    // @ts-ignore
+    const user = req.userId;
+    const existinglink = await db_1.LinkModel.findOne({ userId: user });
     if (existinglink) {
         return res.json({
-            message: "Link already exists"
+            message: "Link already exists",
+            link: existinglink.hash
         });
     }
     if (share) {
         const hash = (0, utils_1.random)(10);
         const link = await db_1.LinkModel.create({
-            hash: hash,
+            hash: '/share/' + hash,
             //@ts-ignore
             userId: req.userId
         });
@@ -157,11 +158,11 @@ app.post("/api/v1/library/share", middleware_1.auth, async (req, res) => {
         message: "Link deleted successfully"
     });
 });
-app.get("/api/v1/library/:shareLink", middleware_1.auth, async (req, res) => {
+app.get("/api/v1/library/share/:shareLink", middleware_1.auth, async (req, res) => {
     //@ts-ignore
-    const hash = req.body.hash;
+    const userId = req.userId;
     const link = await db_1.LinkModel.findOne({
-        hash: hash,
+        userId: userId
     });
     if (!link) {
         return res.status(404).json({
