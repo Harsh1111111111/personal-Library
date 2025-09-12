@@ -5,7 +5,7 @@ import jwt,{JwtPayload} from 'jsonwebtoken';
 import { UserModel } from './db';
 // import {usercontent } from './index';
 import dotenv from 'dotenv';
-
+dotenv.config(); 
 interface usercontent extends JwtPayload
 {
     userId?: string
@@ -14,7 +14,7 @@ interface usercontent extends JwtPayload
 // this middleware is used to authenthicate the user
 export async function auth(req: Request, res:Response, next: NextFunction)
 {
-    const jwt_secret = process.env.jwt_secreat;
+    const jwt_secret = process.env.JWT_SECRET;
     if(!jwt_secret)
     {
         return res.json({

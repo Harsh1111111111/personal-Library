@@ -7,11 +7,13 @@ import {auth,adminauth} from './middleware';
 import { random } from './utils';
 import dotenv from 'dotenv'
 
+dotenv.config(); 
 
 const app = express();
 
 
 const dburl = process.env.MONGO_URL; 
+
 
 if(!dburl)
 {
@@ -53,13 +55,13 @@ app.get("/api/secret/getuserdetails" , adminauth,  async(req,res)=>
 })
 
 
-app.post("/api/v1/signin",async(req,res) => {
+app.post("/api/v1/signin",auth, async(req,res) => {
 
     //zod validation  -> not implemented yet
 
     const {username, password} = req.body;
     const response = await UserModel.findOne({username,password});
-    const jwt_secret = process.env.jwt_secret;
+    const jwt_secret = process.env.JWT_SECRET
     if(!jwt_secret)
     {
         return res.json({
@@ -171,21 +173,22 @@ app.delete("/api/v1/content",auth, async(req,res) => {
 
 app.post("/api/v1/library/share",auth , async (req,res) => {
     const share = req.body;
-
-    const existinglink = await LinkModel.findOne({
-        userId: share.userId
-    })
+    // @ts-ignore
+    const user = req.userId;
+    const existinglink = await LinkModel.findOne({userId : user})
     if(existinglink)
     {
         return res.json({
-            message: "Link already exists"
+            message: "Link already exists",
+            link : existinglink.hash
         })
     }
+
     if(share)
     {
         const hash = random(10);
         const link = await LinkModel.create({
-            hash:hash,
+            hash:'/share/'+hash,
             //@ts-ignore
             userId: req.userId
         })
@@ -195,6 +198,7 @@ app.post("/api/v1/library/share",auth , async (req,res) => {
             link: hash
         })
     }
+   
  
     await LinkModel.deleteOne({
             //@ts-ignore
@@ -206,12 +210,12 @@ app.post("/api/v1/library/share",auth , async (req,res) => {
 
 })
 
-app.get("/api/v1/library/:shareLink",auth, async (req,res) => {
+app.get("/api/v1/library/share/:shareLink",auth, async (req,res) => {
     //@ts-ignore
-    const hash = req.body.hash;
+    const userId= req.userId
 
     const link = await LinkModel.findOne({
-        hash: hash,
+        userId: userId
     })
 
     if(!link)
@@ -222,7 +226,7 @@ app.get("/api/v1/library/:shareLink",auth, async (req,res) => {
     }   
 
     
-   const content = await UserContent.find({ userId: link.userId });
+    const content = await UserContent.find({ userId: link.userId });
     const user = await UserModel.findOne({ _id: link.userId });
 
     if (!user) {
